@@ -4,5 +4,21 @@
         "serialport",
         "SIGTERM",
         "termion"
-    ]
+    ],
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.rulers": [
+        100
+    ],
+    "workbench.tree.indent": 20,
+    "workbench.tree.renderIndentGuides": "always",
+    "todo-tree.general.tags": [
+        "FIXME",
+        "TODO",
+    ],
+    "rust-analyzer.checkOnSave.allFeatures": true,
+    "rust-analyzer.lens.debug": false,
+    "rust-analyzer.lens.run": false,
+    "cSpell.allowCompoundWords": true,
+    "explorer.sortOrder": "filesFirst"
 }
