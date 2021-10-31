@@ -49,7 +49,7 @@ pub fn run(device: &str, baud_rate: u32) {
             let mut buffer = [0; 1];
             buffer[0] = input;
             target_serial_output
-                .write(&buffer)
+                .write_all(&buffer)
                 .expect("Error writing to target serial");
         }
     }
