@@ -19,3 +19,7 @@ Take note of the [dependencies](https://gitlab.com/susurrus/serialport-rs/-/tree
 
 - Run `make` to build the tool.
 - Then run `make install` to install it in your system.
+
+## Known Issues
+
+Your computer will thrash when you run miniterm. This is caused by 2 busy loops running on 2 threads. Each one is waiting or shuffling bytes in one direction or the other.
