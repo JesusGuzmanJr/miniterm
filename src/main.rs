@@ -3,10 +3,10 @@ mod terminal;
 fn main() {
     color_backtrace::install();
 
-    const DEVICE_NAME: &'static str = "DEVICE_NAME";
-    const DEFAULT_DEVICE_NAME: &'static str = "/dev/ttyUSB0";
-    const BAUD: &'static str = "BAUD";
-    const DEFAULT_BAUD: &'static str = "921_600";
+    const DEVICE_NAME: &str = "DEVICE_NAME";
+    const DEFAULT_DEVICE_NAME: &str = "/dev/ttyUSB0";
+    const BAUD: &str = "BAUD";
+    const DEFAULT_BAUD: &str = "921_600";
 
     let matches = clap::App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
