@@ -7,15 +7,141 @@ use {
     termion::{color, raw::IntoRawMode},
 };
 
-pub fn run(device: &str, baud_rate: u32) {
+pub fn run_loader(device: &str, baud: u32, image: &str) {
     print_intro();
     set_ctrl_c_handler();
 
-    let mut target_serial_input = open_serial(device, baud_rate);
+    let mut target_serial_input = open_serial(device, baud);
     let mut target_serial_output = target_serial_input
         .try_clone()
         .expect("Error creating second serial connection");
 
+    println!("🔌 Please power the target now.");
+    wait_for_payload_request(&mut target_serial_input);
+
+    let image = load_kernel_image(image);
+
+    send_kernel_size(
+        image.len(),
+        &mut target_serial_input,
+        &mut target_serial_output,
+    );
+
+    send_kernel(&image, &mut target_serial_output);
+    run_terminal(target_serial_input, target_serial_output);
+}
+
+fn send_kernel(image: &[u8], target_serial_output: &mut Box<dyn SerialPort>) {
+    let progress_bar = indicatif::ProgressBar::new(image.len() as _);
+    progress_bar.set_style(
+        indicatif::ProgressStyle::default_bar()
+            .template("⏩ Loading {bytes} [{wide_bar:.white}] {percent}% {binary_bytes_per_sec}")
+            .progress_chars("=🦀 "),
+    );
+
+    let mut sent = 0;
+    // Send in 512 byte chunks
+    for chunk in image.chunks(512) {
+        target_serial_output
+            .write_all(&chunk)
+            .expect("Error loading image to target serial.");
+        sent += chunk.len();
+        progress_bar.set_position(sent as _);
+    }
+    progress_bar.finish();
+}
+
+fn send_kernel_size(
+    size: usize,
+    target_serial_input: &mut Box<dyn SerialPort>,
+    target_serial_output: &mut Box<dyn SerialPort>,
+) {
+    target_serial_output
+        // loader expects size to be little-endian 32 bits.
+        .write_all(&(size as u32).to_le_bytes())
+        .expect("Error writing the size to target serial.");
+
+    // wait for ok
+    loop {
+        let mut buffer = [0; 2];
+        match target_serial_input.read(&mut buffer) {
+            // loop again if its a timeout
+            Err(ref error) if error.kind() == std::io::ErrorKind::TimedOut => (),
+            Err(error) => {
+                eprintln!("Error getting target serial input: {}", error);
+                std::process::exit(1);
+            }
+            Ok(_) => {
+                if buffer == "OK".as_bytes() {
+                    return;
+                } else {
+                    eprintln!(
+                        "Error reading OK confirmation after sending image size to target serial."
+                    );
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+}
+
+fn load_kernel_image(image: &str) -> Vec<u8> {
+    match std::fs::read(image) {
+        Ok(image) => image,
+        Err(error) => {
+            eprintln!("Error reading kernel image: {}", error);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn wait_for_payload_request(target_serial_input: &mut Box<dyn SerialPort>) {
+    let mut count = 0;
+    loop {
+        let mut buffer = [0; 4096];
+
+        match target_serial_input.read(&mut buffer) {
+            // loop again if its a timeout
+            Err(ref error) if error.kind() == std::io::ErrorKind::TimedOut => (),
+            Err(error) => {
+                eprintln!("Error getting target serial input: {}", error);
+                std::process::exit(1);
+            }
+            Ok(n) => {
+                print!("{}", &String::from_utf8_lossy(&buffer[0..n]));
+                for byte in &buffer[0..n] {
+                    if byte == &3 {
+                        count += 1;
+                        // if we read three 3s, that's the signal to proceed.
+                        if count == 3 {
+                            return;
+                        }
+                    } else {
+                        // Any other byte resets token counting.
+                        count = 0;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn run(device: &str, baud: u32) {
+    print_intro();
+    set_ctrl_c_handler();
+
+    let target_serial_input = open_serial(device, baud);
+    let target_serial_output = target_serial_input
+        .try_clone()
+        .expect("Error creating second serial connection.");
+
+    run_terminal(target_serial_input, target_serial_output);
+}
+
+fn run_terminal(
+    mut target_serial_input: Box<dyn SerialPort>,
+    mut target_serial_output: Box<dyn SerialPort>,
+) {
     std::thread::spawn(move || loop {
         // buffer of 1 byte.
         let mut buffer = [0; 1];
@@ -25,6 +151,7 @@ pub fn run(device: &str, baud_rate: u32) {
             Err(ref error) if error.kind() == std::io::ErrorKind::TimedOut => (),
             Err(error) => {
                 eprintln!("Error getting target serial input: {}", error);
+                std::process::exit(1);
             }
             Ok(n) => {
                 let mut host_stdout = stdout().into_raw_mode().expect("Error getting raw stdout.");
@@ -42,15 +169,15 @@ pub fn run(device: &str, baud_rate: u32) {
         }
     });
 
-    let mut host_stdint = termion::async_stdin().bytes();
+    let mut host_stdin = termion::async_stdin().bytes();
     loop {
-        if let Some(input) = host_stdint.next() {
+        if let Some(input) = host_stdin.next() {
             let input = input.expect("Error with stdin stream.");
             let mut buffer = [0; 1];
             buffer[0] = input;
             target_serial_output
                 .write_all(&buffer)
-                .expect("Error writing to target serial");
+                .expect("Error writing to target serial.");
         }
     }
 }

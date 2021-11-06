@@ -1,6 +1,7 @@
 {
     "cSpell.words": [
         "consts",
+        "indicatif",
         "serialport",
         "SIGTERM",
         "termion"

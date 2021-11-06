@@ -14,5 +14,6 @@ lto = true
 clap = "2.33.3"
 color-backtrace = "0.5.1"
 ctrlc = "3.2.1"
+indicatif = "0.16.2"
 serialport = {version = "4.0.1", default-features = false}
 termion = "1.5.6"

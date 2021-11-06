@@ -1,25 +1,12 @@
 ##--------------------------------------------------------------------------------------------------
 ## Optional, user-provided configuration values
 ##--------------------------------------------------------------------------------------------------
-
-# Default to a serial device name that is common in Linux.
-DEVICE_NAME ?= /dev/ttyUSB0
-
-# Default to the Raspberry Pi 4.
-BOARD ?= rpi4
-
-BIN_NAME = miniterm
 INSTALL_PATH = /usr/local/bin
 
 ##--------------------------------------------------------------------------------------------------
 ## Hardcoded configuration values
 ##--------------------------------------------------------------------------------------------------
-
-ifeq ($(BOARD),rpi3)
-	BAUD_RATE = 921_600
-else ifeq ($(BOARD),rpi4)
-	BAUD_RATE = 921_600
-endif
+BIN_NAME = miniterm
 
 
 .PHONY: all clean check clean install uninstall run
