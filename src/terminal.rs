@@ -43,7 +43,7 @@ fn send_kernel(image: &[u8], target_serial_output: &mut Box<dyn SerialPort>) {
     // Send in 512 byte chunks
     for chunk in image.chunks(512) {
         target_serial_output
-            .write_all(&chunk)
+            .write_all(chunk)
             .expect("Error loading image to target serial.");
         sent += chunk.len();
         progress_bar.set_position(sent as _);
