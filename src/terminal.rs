@@ -7,6 +7,9 @@ use {
     termion::{color, raw::IntoRawMode},
 };
 
+type SerialDevice = Box<dyn SerialPort>;
+
+/// Run the kernel image loader on the given device name
 pub fn run_loader(device: &str, baud: u32, image: &str) {
     print_intro();
     set_ctrl_c_handler();
@@ -31,7 +34,8 @@ pub fn run_loader(device: &str, baud: u32, image: &str) {
     run_terminal(target_serial_input, target_serial_output);
 }
 
-fn send_kernel(image: &[u8], target_serial_output: &mut Box<dyn SerialPort>) {
+/// Sends kernel image to a serial device)
+fn send_kernel(image: &[u8], target_serial_output: &mut SerialDevice) {
     let progress_bar = indicatif::ProgressBar::new(image.len() as _);
     progress_bar.set_style(
         indicatif::ProgressStyle::default_bar()
@@ -53,8 +57,8 @@ fn send_kernel(image: &[u8], target_serial_output: &mut Box<dyn SerialPort>) {
 
 fn send_kernel_size(
     size: usize,
-    target_serial_input: &mut Box<dyn SerialPort>,
-    target_serial_output: &mut Box<dyn SerialPort>,
+    target_serial_input: &mut SerialDevice,
+    target_serial_output: &mut SerialDevice,
 ) {
     target_serial_output
         // loader expects size to be little-endian 32 bits.
@@ -95,7 +99,7 @@ fn load_kernel_image(image: &str) -> Vec<u8> {
     }
 }
 
-fn wait_for_payload_request(target_serial_input: &mut Box<dyn SerialPort>) {
+fn wait_for_payload_request(target_serial_input: &mut SerialDevice) {
     let mut count = 0;
     loop {
         let mut buffer = [0; 4096];
@@ -138,10 +142,7 @@ pub fn run(device: &str, baud: u32) {
     run_terminal(target_serial_input, target_serial_output);
 }
 
-fn run_terminal(
-    mut target_serial_input: Box<dyn SerialPort>,
-    mut target_serial_output: Box<dyn SerialPort>,
-) {
+fn run_terminal(mut target_serial_input: SerialDevice, mut target_serial_output: SerialDevice) {
     std::thread::spawn(move || loop {
         // buffer of 1 byte.
         let mut buffer = [0; 1];
@@ -200,7 +201,7 @@ fn set_ctrl_c_handler() {
     .expect("Error setting Ctrl-C handler.");
 }
 
-fn open_serial(device: &str, baud_rate: u32) -> Box<dyn SerialPort> {
+fn open_serial(device: &str, baud_rate: u32) -> SerialDevice {
     wait_for_serial_device(device);
 
     let connection = match serialport::new(device, baud_rate)
